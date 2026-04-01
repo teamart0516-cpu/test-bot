@@ -1,30 +1,47 @@
-from aiogram import Bot, Dispatcher, types
-from aiogram.enums import ParseMode
-from aiogram.filters import CommandStart
-from aiogram import F
 import asyncio
 import logging
-import sys
+import os
+from aiogram import Bot, Dispatcher, types
+from aiogram.filters import ChatJoinRequest
 
 
-# Твой токен
-TOKEN = "8514931533:AAHGQAxCPlovo-FySOy9F3OIjKiJS7NThRw"
+RAW_TOKENS = os.getenv("TOKEN", "")  #ТОКЕНЫ
+TOKENS = [t.strip() for t in RAW_TOKENS.split(",") if t.strip()]
 
-dp = Dispatcher()
+async def start_single_bot(token):
+    """Функция запуска одного конкретного бота"""
+    bot = Bot(token=token)
+    dp = Dispatcher()
 
-@dp.message(CommandStart())
-async def command_start_handler(message: types.Message):
-    await message.answer(f"Привет! Я бот на новой версии aiogram, запущен 24/7!")
 
-@dp.message()
-async def echo_handler(message: types.Message):
-    # Просто повторяем сообщение
-    await message.send_copy(chat_id=message.chat.id)
+    @dp.chat_join_request()
+    async def approve_request(chat_join: types.ChatJoinRequest):
+        try:
+            await chat_join.approve()
+            logging.info(f"Бот {token[:10]}... одобрил заявку юзера {chat_join.from_user.id}")
+        except Exception as e:
+            logging.error(f"Ошибка в боте {token[:10]}: {e}")
+
+    try:
+        logging.info(f"Запуск бота: {token[:10]}...")
+        await dp.start_polling(bot)
+    finally:
+        await bot.session.close()
 
 async def main():
-    bot = Bot(TOKEN)
-    await dp.start_polling(bot)
+
+    logging.basicConfig(level=logging.INFO)
+    
+    if not TOKENS:
+        print("ОШИБКА: Список токенов пуст! Добавь их в Environment Variables через запятую.")
+        return
+
+
+    tasks = [start_single_bot(token) for token in TOKENS]
+    await asyncio.gather(*tasks)
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO, stream=sys.stdout)
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except (KeyboardInterrupt, SystemExit):
+        logging.info("Все боты остановлены.")
