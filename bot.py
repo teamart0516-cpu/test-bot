@@ -2,8 +2,6 @@ import asyncio
 import logging
 import os
 from aiogram import Bot, Dispatcher, types
-from aiogram.filters import ChatJoinRequest
-
 
 RAW_TOKENS = os.getenv("TOKEN", "")  #ТОКЕНЫ
 TOKENS = [t.strip() for t in RAW_TOKENS.split(",") if t.strip()]
